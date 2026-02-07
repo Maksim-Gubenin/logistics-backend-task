@@ -5,7 +5,7 @@ This module provides a custom base class for SQLAlchemy models that automaticall
 generates table names from class names using camelCase to snake_case conversion,
 and includes a standard primary key field.
 """
-
+import inflection
 from sqlalchemy import BigInteger, MetaData
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -69,7 +69,7 @@ class Base(DeclarativeBase):
             ProductItem → product_items
             Order       → orders
         """
-        # Единые правила по именованию таблиц
-        return f"{camel_case_to_snake_case(cls.__name__)}s"
+        singular_name = camel_case_to_snake_case(cls.__name__)
+        return inflection.pluralize(singular_name)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
