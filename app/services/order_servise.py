@@ -1,0 +1,56 @@
+from decimal import Decimal
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.models.nomenclature import Nomenclature
+from app.core.models.order import Order
+from app.core.models.order_items import OrderItem
+from app.schemas.order import OrderCreate
+from app.schemas.order_item import OrderItemInDB
+from app.services.base import CRUDBase
+
+crud_order: CRUDBase = CRUDBase(Order)
+crud_order_item: CRUDBase = CRUDBase(OrderItem)
+
+
+class OrderService:
+
+    async def create_full_order(self, db: AsyncSession, order_in: OrderCreate) -> Order:
+        nomenclature_ids = [item.nomenclature_id for item in order_in.items]
+
+        stmt = select(Nomenclature).where(Nomenclature.id.in_(nomenclature_ids)).with_for_update()
+        result = await db.execute(stmt)
+        nomenclatures = result.scalars().all()
+
+        nomenclature_map = {item.id: item for item in nomenclatures}
+        for item_in in order_in.items:
+            item_db = nomenclature_map.get(item_in.nomenclature_id)
+            if not item_db or item_db.quantity < item_in.quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Недостаточное количество товара ID {item_in.nomenclature_id} на складе."
+                )
+
+        order_db = await crud_order.create(db, order_in)
+
+        for item_in in order_in.items:
+            nomenclature_map[item_in.nomenclature_id].quantity -= item_in.quantity
+            db.add(nomenclature_map[item_in.nomenclature_id])
+
+            price_at_purchase_decimal: Decimal = nomenclature_map[item_in.nomenclature_id].price
+
+            order_item_create = OrderItemInDB(
+                order_id=order_db.id,
+                nomenclature_id=item_in.nomenclature_id,
+                quantity=item_in.quantity,
+                price_at_purchase=price_at_purchase_decimal
+            )
+            await crud_order_item.create(db, order_item_create)
+
+        await db.refresh(order_db, attribute_names=["items"])
+        return order_db
+
+
+order_service = OrderService()
