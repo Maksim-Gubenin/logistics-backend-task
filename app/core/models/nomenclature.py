@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, Numeric, String
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 class Nomenclature(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=0)
-    price: Mapped[float] = mapped_column(Numeric(precision=10, scale=2), nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2), nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False)
 
     category: Mapped["Category"] = relationship(back_populates="nomenclatures")
