@@ -5,8 +5,6 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-    environment:
-      DATABASE_URL: postgresql://user:password@db:5432/logistic_db
     depends_on:
       - db
     command: >
