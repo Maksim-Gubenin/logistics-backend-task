@@ -1,8 +1,7 @@
-# app/services/base.py
 from typing import Any, Dict, Generic, Optional, Sequence, Type, TypeVar, Union
 
 from pydantic import BaseModel
-from sqlalchemy import select  # Добавляем delete и update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models.base import Base
@@ -29,10 +28,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = obj_in.model_dump()
         db_obj = self.model(**obj_in_data)
-
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
         return db_obj
 
     async def update(
@@ -51,8 +47,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 setattr(db_obj, field, update_data[field])
 
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
         return db_obj
 
     async def delete(self, db: AsyncSession, model_id: int) -> Optional[ModelType]:
@@ -62,6 +56,5 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         if db_obj:
             await db.delete(db_obj)
-            await db.commit()
             return db_obj
         return None
