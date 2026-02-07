@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel, PositiveInt, ConfigDict
+from pydantic import BaseModel, ConfigDict, PositiveInt
 
 from app.schemas.order_item import OrderItemCreateInput, OrderItemInDB
 
