@@ -34,6 +34,23 @@ async def add_item_to_order_endpoint(
     item_data: OrderItemCreateInput,
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)]
 ) -> OrderItem:
+    """
+    Handles the request to add or update an item within an order.
+
+    This endpoint orchestrates the addition or quantity update of a specific nomenclature item
+    in a customer's order, ensuring data integrity through atomic operations.
+
+    Args:
+        item_data: The input data containing order ID, nomenclature ID, and quantity.
+        session: The asynchronous database session dependency.
+
+    Returns:
+        The updated or newly created OrderItem database object.
+
+    Raises:
+        HTTPException: If the order is not found (404), or if there is
+                       insufficient stock quantity (400).
+    """
     item = await order_service.add_item_to_order(session=session, item_data=item_data)
     await session.commit()
     await session.refresh(item)

@@ -147,6 +147,18 @@ def create_app(
 
     @app.exception_handler(InsufficientStockError)
     async def insufficient_stock_exception_handler(request: Request, exc: InsufficientStockError) -> JSONResponse:
+        """
+        Handles InsufficientStockError exceptions globally within the FastAPI application.
+
+        Logs the error and returns a 400 Bad Request JSON response to the client.
+
+        Args:
+            request: The incoming FastAPI request object.
+            exc: The InsufficientStockError instance raised.
+
+        Returns:
+            A JSONResponse with HTTP status 400.
+        """
         logger.error(f"Обработка InsufficientStockError для запроса {request.url.path}: {exc}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -155,6 +167,18 @@ def create_app(
 
     @app.exception_handler(OrderNotFoundError)
     async def order_not_found_exception_handler(request: Request, exc: OrderNotFoundError) -> JSONResponse:
+        """
+        Handles OrderNotFoundError exceptions globally within the FastAPI application.
+
+        Logs the error and returns a 404 Not Found JSON response to the client.
+
+        Args:
+            request: The incoming FastAPI request object.
+            exc: The OrderNotFoundError instance raised.
+
+        Returns:
+            A JSONResponse with HTTP status 404.
+        """
         logger.error(f"Обработка OrderNotFoundError для запроса {request.url.path}: {exc}")
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -164,6 +188,18 @@ def create_app(
     @app.exception_handler(NomenclatureNotFoundError)
     async def nomenclature_not_found_exception_handler(request: Request,
                                                        exc: NomenclatureNotFoundError) -> JSONResponse:
+        """
+        Handles NomenclatureNotFoundError exceptions globally within the FastAPI application.
+
+        Logs the error and returns a 404 Not Found JSON response to the client.
+
+        Args:
+            request: The incoming FastAPI request object.
+            exc: The NomenclatureNotFoundError instance raised.
+
+        Returns:
+            A JSONResponse with HTTP status 404.
+        """
         logger.error(f"Обработка NomenclatureNotFoundError для запроса {request.url.path}: {exc}")
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
