@@ -15,7 +15,8 @@ dependencies = [
     "asyncpg (>=0.31.0,<0.32.0)",
     "pydantic-settings (>=2.12.0,<3.0.0)",
     "alembic (>=1.18.3,<2.0.0)",
-    "orjson (>=3.11.7,<4.0.0)"
+    "orjson (>=3.11.7,<4.0.0)",
+    "inflection (>=0.5.1,<0.6.0)"
 ]
 
 
@@ -30,7 +31,8 @@ dev = [
     "httpx (>=0.28.1,<0.29.0)",
     "ruff (>=0.15.0,<0.16.0)",
     "mypy (>=1.19.1,<2.0.0)",
-    "pytest-cov (>=7.0.0,<8.0.0)"
+    "pytest-cov (>=7.0.0,<8.0.0)",
+    "testcontainers (>=4.14.1,<5.0.0)"
 ]
 
 [tool.ruff]
@@ -55,9 +57,23 @@ plugins = [
 
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "--cov=app --cov-report=term-missing"
-testpaths = [
-    "tests",
+asyncio_mode = "auto"
+# Указываем область видимости цикла для всего
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+addopts = """
+    -v
+    -p no:warnings
+    --cov=app
+    --cov-report=term-missing
+    --cov-report=xml:coverage.xml
+    --cov-fail-under=80
+"""
+
+[tool.coverage.run]
+omit = [
+    "app/scripts/*",
+    "app/main.py",
+    "tests/*",
+    "alembic/*",
 ]
-asyncio_mode = "strict"
