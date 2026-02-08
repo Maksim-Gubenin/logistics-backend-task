@@ -15,13 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Start Docker Containers
+        run: docker compose -f docker-compose.test.yml up -d db_test
+      - name: Wait for PostgreSQL
+        run: docker compose -f docker-compose.test.yml exec db_test sh -c 'until pg_isready -U user -d logistic_test; do sleep 1; done'
+      - name: Apply Migrations and Seed Data
+        run: |
+          docker compose -f docker-compose.test.yml run --rm app_test poetry run alembic upgrade head
+          docker compose -f docker-compose.test.yml run --rm db_seed_test
+      - name: Run Tests with Coverage Check
+        run: docker compose -f docker-compose.test.yml run --rm app_test poetry run pytest --cov=app --cov-report=xml --cov-fail-under=80
+      - name: Set up Python 3.12 (for Linter/Mypy only)
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: Install Poetry
+      - name: Install Poetry (for Linter/Mypy only)
         uses: snok/install-poetry@v1
-      - name: Install dependencies
+      - name: Install dependencies (for Linter/Mypy only)
         run: poetry install --no-root
       - name: Run Ruff Linter
         run: poetry run ruff check .
