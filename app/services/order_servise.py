@@ -1,9 +1,10 @@
+import logging
 from decimal import Decimal
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import InsufficientStockError, NomenclatureNotFoundError, OrderNotFoundError
 from app.core.models.nomenclature import Nomenclature
 from app.core.models.order import Order
 from app.core.models.order_items import OrderItem
@@ -13,6 +14,8 @@ from app.services.base import CRUDBase
 
 crud_order: CRUDBase = CRUDBase(Order)
 crud_order_item: CRUDBase = CRUDBase(OrderItem)
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -27,13 +30,24 @@ class OrderService:
         nomenclature_map = {item.id: item for item in nomenclatures}
         for item_in in order_in.items:
             item_db = nomenclature_map.get(item_in.nomenclature_id)
-            if not item_db or item_db.quantity < item_in.quantity:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Недостаточное количество товара ID {item_in.nomenclature_id} на складе."
+            if not item_db:
+                logger.warning(f"Номенклатура ID {item_in.nomenclature_id} не найдена при создании заказа.")
+                raise NomenclatureNotFoundError(nomenclature_id=item_in.nomenclature_id)
+            if item_db.quantity < item_in.quantity:
+                logger.warning(
+                    f"Недостаточно товара ID {item_in.nomenclature_id}. "
+                    f"Запрошено: {item_in.quantity}, "
+                    f"в наличии: {item_db.quantity}")
+                raise InsufficientStockError(
+                    nomenclature_id=item_in.nomenclature_id,
+                    available_quantity=item_db.quantity,
+                    requested_quantity=item_in.quantity
                 )
 
-        order_db = await crud_order.create(db, order_in)
+        order_data = order_in.model_dump(exclude={"items"})
+        order_db = Order(**order_data)
+        db.add(order_db)
+        await db.flush()
 
         for item_in in order_in.items:
             nomenclature_map[item_in.nomenclature_id].quantity -= item_in.quantity
@@ -59,15 +73,26 @@ class OrderService:
     ) -> OrderItem:
         order = await session.get(Order, item_data.order_id)
         if not order:
-            raise HTTPException(status_code=404, detail="Заказ не найден")
+            logger.warning(f"Попытка добавить товар в несуществующий заказ ID {item_data.order_id}.")
+            raise OrderNotFoundError(order_id=item_data.order_id)
+
         stmt_nom = select(Nomenclature).where(Nomenclature.id == item_data.nomenclature_id).with_for_update()
         res_nom = await session.execute(stmt_nom)
         product = res_nom.scalar_one_or_none()
 
-        if not product or product.quantity < item_data.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Товара нет в наличии или недостаточно на складе"
+        if not product:
+            logger.warning(f"Номенклатура ID {item_data.nomenclature_id} не найдена.")
+            raise NomenclatureNotFoundError(nomenclature_id=item_data.nomenclature_id)
+
+        if product.quantity < item_data.quantity:
+            logger.warning(
+                f"Недостаточно товара ID {item_data.nomenclature_id}. "
+                f"Запрошено: {item_data.quantity}, "
+                f"в наличии: {product.quantity}")
+            raise InsufficientStockError(
+                nomenclature_id=item_data.nomenclature_id,
+                available_quantity=product.quantity,
+                requested_quantity=item_data.quantity
             )
 
         stmt_item = select(OrderItem).where(
