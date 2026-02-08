@@ -5,20 +5,24 @@ This module provides a factory function for creating FastAPI applications with
 customized Swagger UI and ReDoc documentation, async lifespan management,
 and ORJSON response serialization.
 """
-
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
-from fastapi.responses import HTMLResponse, ORJSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, ORJSONResponse
 
 from app.api import api_router
 from app.core import db_helper
+from app.core.exceptions import InsufficientStockError, NomenclatureNotFoundError, OrderNotFoundError
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -140,6 +144,31 @@ def create_app(
         docs_url=None if create_custom_static_urls else "/docs",
         redoc_url=None if create_custom_static_urls else "/redoc",
     )
+
+    @app.exception_handler(InsufficientStockError)
+    async def insufficient_stock_exception_handler(request: Request, exc: InsufficientStockError) -> JSONResponse:
+        logger.error(f"Обработка InsufficientStockError для запроса {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(OrderNotFoundError)
+    async def order_not_found_exception_handler(request: Request, exc: OrderNotFoundError) -> JSONResponse:
+        logger.error(f"Обработка OrderNotFoundError для запроса {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(NomenclatureNotFoundError)
+    async def nomenclature_not_found_exception_handler(request: Request,
+                                                       exc: NomenclatureNotFoundError) -> JSONResponse:
+        logger.error(f"Обработка NomenclatureNotFoundError для запроса {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc)},
+        )
 
     app.include_router(api_router)
 
