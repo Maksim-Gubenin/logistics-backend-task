@@ -12,6 +12,12 @@ from app.core.models import Category, Client, Nomenclature, Order, OrderItem
 
 @asynccontextmanager
 async def get_session_for_script() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provides an asynchronous database session as a context manager for script usage.
+
+    Yields:
+        AsyncSession: The database session object.
+    """
     session_generator = db_helper.session_getter()
     try:
         session = await anext(session_generator)
@@ -21,6 +27,15 @@ async def get_session_for_script() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def seed_database(session: AsyncSession) -> None:
+    """
+    Populates the database with initial dummy data for testing purposes.
+
+    Creates clients, a hierarchical category tree, nomenclature items with stock,
+    and a few sample orders.
+
+    Args:
+        session: The active asynchronous database session.
+    """
     print("Начало наполнения БД...")
 
     c1 = Client(name="ИП Иванов", address="Москва")
@@ -78,6 +93,11 @@ async def seed_database(session: AsyncSession) -> None:
 
 
 async def main() -> None:
+    """
+    Main entry point for the database seeding script.
+
+    Checks if the database is already populated before calling the seed_database function.
+    """
     async with get_session_for_script() as session:
         count_stmt = select(func.count(Client.id))
         count = await session.scalar(count_stmt)
@@ -89,4 +109,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Executes the main function if the script is run directly.
     asyncio.run(main())
