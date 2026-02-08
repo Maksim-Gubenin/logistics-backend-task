@@ -3,12 +3,13 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    env_file:
+      - .env
     depends_on:
-      - db
-    command: >
-      sh -c "poetry run alembic upgrade head && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      db:
+        condition: service_healthy
+
+    command: ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000"]
 
   db:
     image: postgres:15
@@ -17,8 +18,23 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: logistic_db
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d logistic_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  db_seeder:
+    build: .
+    profiles: ["debug"]
+    env_file: .env
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["poetry", "run", "python", "-m", "app.scripts.seed_db"]
 
 volumes:
   postgres_data:
