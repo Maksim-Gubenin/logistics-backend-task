@@ -20,25 +20,15 @@ from app.utils import camel_case_to_snake_case
 
 class Base(DeclarativeBase):
     """
-    Custom SQLAlchemy declarative base class with automatic table naming.
+    Custom SQLAlchemy declarative base class with automatic table naming and conventions.
 
     This class extends SQLAlchemy's DeclarativeBase to provide:
-    1. Automatic table name generation from class names
-    2. Standard primary key field (id)
-    3. Consistent naming conventions across all models
+    1.  Automatic table name generation from PascalCase class names to snake_case plural form.
+    2.  A standard, automatically included primary key field (`id`).
+    3.  Consistent naming conventions for constraints and indexes via `MetaData`.
 
     Attributes:
-        id (Mapped[int]): Primary key field automatically added to all models.
-
-    Example:
-        class User(Base):
-        ...name: Mapped[str]
-        ...email: Mapped[str]
-        User.__tablename__
-        'users'  # Automatically generated from 'User' + 's'
-        User.__table__.primary_key.columns
-        ['id']  # Automatically included primary key
-
+        id (Mapped[int]): The primary key field (BigInteger) automatically added to all models.
     """
 
     __abstract__ = True
@@ -50,24 +40,15 @@ class Base(DeclarativeBase):
     @declared_attr.directive
     def __tablename__(cls) -> str:
         """
-        Automatically generate table name from class name.
+        Automatically generates the table name from the class name.
 
-        This class method is called by SQLAlchemy when creating tables to
-        determine the table name. It converts the PascalCase class name to
-        snake_case and pluralizes it by adding 's'.
+        Converts the PascalCase class name to snake_case and pluralizes it.
 
         Args:
             cls: The model class being defined.
 
         Returns:
-            Table name in snake_case plural form.
-
-        Transformation Rules:
-            Class Name → Table Name
-            ----------   ----------
-            User        → users
-            ProductItem → product_items
-            Order       → orders
+            str: The table name in snake_case plural form (e.g., 'users', 'product_items').
         """
         singular_name = camel_case_to_snake_case(cls.__name__)
         return inflection.pluralize(singular_name)

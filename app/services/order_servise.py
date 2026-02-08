@@ -19,8 +19,30 @@ logger = logging.getLogger(__name__)
 
 
 class OrderService:
+    """
+    Service class encapsulating business logic for handling customer orders.
 
+    This includes creating full orders and adding individual items, managing
+    stock levels, and ensuring data consistency.
+    """
     async def create_full_order(self, db: AsyncSession, order_in: OrderCreate) -> Order:
+        """
+        Creates a complete order with multiple items from a Pydantic schema.
+
+        This method handles stock validation, price capture at purchase time,
+        stock deduction, and atomic transaction management.
+
+        Args:
+            db: The asynchronous database session.
+            order_in: The schema containing client ID and list of items to order.
+
+        Returns:
+            The fully populated Order model instance, refreshed with its items relationship.
+
+        Raises:
+            NomenclatureNotFoundError: If any item in the order list does not exist.
+            InsufficientStockError: If there is not enough stock for any item requested.
+        """
         nomenclature_ids = [item.nomenclature_id for item in order_in.items]
 
         stmt = select(Nomenclature).where(Nomenclature.id.in_(nomenclature_ids)).with_for_update()
@@ -71,6 +93,24 @@ class OrderService:
             session: AsyncSession,
             item_data: OrderItemCreateInput
     ) -> OrderItem:
+        """
+        Adds a single nomenclature item to an existing order or updates quantity if present.
+
+        Ensures atomic updates using database locking (`with_for_update()`) to prevent
+        race conditions when checking/updating stock and order items.
+
+        Args:
+            session: The asynchronous database session.
+            item_data: The input data (order ID, nomenclature ID, quantity).
+
+        Returns:
+            The created or updated OrderItem instance.
+
+        Raises:
+            OrderNotFoundError: If the specified order ID does not exist.
+            NomenclatureNotFoundError: If the specified nomenclature ID does not exist.
+            InsufficientStockError: If there is insufficient stock to fulfill the request.
+        """
         order = await session.get(Order, item_data.order_id)
         if not order:
             logger.warning(f"Попытка добавить товар в несуществующий заказ ID {item_data.order_id}.")

@@ -11,6 +11,16 @@ if TYPE_CHECKING:
 
 
 class Client(Base):
+    """
+    Represents a customer in the system.
+
+    Stores core customer information and links to all orders placed by this client.
+
+    Attributes:
+        name: The full name or company name of the client.
+        address: The primary billing/shipping address of the client.
+        orders: A list of orders associated with this client.
+    """
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[str] = mapped_column(String(500))
 

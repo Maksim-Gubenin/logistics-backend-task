@@ -16,6 +16,16 @@ TEST_DB_URL = os.getenv(
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provides a function-scoped asynchronous database session for testing.
+
+    This fixture creates a dedicated engine and session for each test function.
+    After the test runs, it automatically rolls back the transaction to ensure
+    a clean state for the next test.
+
+    Yields:
+        AsyncSession: An asynchronous SQLAlchemy session connected to the test database.
+    """
     engine = create_async_engine(TEST_DB_URL)
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -28,7 +38,29 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Provides an asynchronous HTTP client for testing FastAPI endpoints.
+
+    This fixture overrides the application's database dependency to use the
+    `db_session` test fixture, ensuring tests run against the isolated test DB transaction.
+
+    Args:
+        db_session: The asynchronous database session fixture.
+
+    Yields:
+        AsyncClient: An asynchronous HTTP client instance configured for the FastAPI app.
+    """
     async def override_session_getter() -> AsyncGenerator[AsyncSession, None]:
+        """
+        Overrides the default database session getter for testing.
+
+        This internal async function is used within a pytest fixture to inject
+        a predefined test `db_session` into FastAPI's dependency injection system,
+        isolating tests from the main application database connection.
+
+        Yields:
+            AsyncSession: The asynchronous database session for the test scope.
+        """
         yield db_session
 
     app.dependency_overrides[db_helper.session_getter] = override_session_getter
