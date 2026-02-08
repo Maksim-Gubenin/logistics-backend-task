@@ -1,15 +1,15 @@
 #!/bin/sh
 set -e
 
-host="db"
-port="5432"
-timeout=15
+host="${DB_HOST:-db}"
+port="${DB_PORT:-5432}"
 
 echo "Waiting for database to be ready on $host:$port..."
-until nc -z $host $port; do
+until nc -z "$host" "$port"; do
   echo "Database is unavailable - sleeping"
   sleep 1
 done
+
 echo "Database is ready, continuing."
 
 echo "Applying database migrations..."
